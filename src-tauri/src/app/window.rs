@@ -24,7 +24,7 @@ fn build_proxy_browser_arg(url: &Url) -> Option<String> {
 
 pub fn set_window(app: &mut App, config: &PakeConfig, tauri_config: &Config) -> WebviewWindow {
     let package_name = tauri_config.clone().product_name.unwrap();
-    let _data_dir = get_data_dir(app.handle(), package_name);
+    let _data_dir = get_data_dir(app.handle(), package_name, config.multi_instance);
 
     let window_config = config
         .windows
