@@ -23,13 +23,21 @@ pub fn get_pake_config() -> (PakeConfig, Config) {
     (pake_config, tauri_config)
 }
 
-pub fn get_data_dir(app: &AppHandle, package_name: String) -> PathBuf {
+pub fn get_data_dir(app: &AppHandle, package_name: String, multi_instance: bool) -> PathBuf {
     {
+        // When multi_instance is enabled, append a UUID to ensure each instance has its own data directory
+        let dir_name = if multi_instance {
+            let uuid = uuid::Uuid::new_v4();
+            format!("{}-{}", package_name, uuid)
+        } else {
+            package_name
+        };
+
         let data_dir = app
             .path()
             .config_dir()
             .expect("Failed to get data dirname")
-            .join(package_name);
+            .join(dir_name);
 
         if !data_dir.exists() {
             std::fs::create_dir(&data_dir)
