@@ -1,25 +1,39 @@
 {
+
   "productName": "Weekly",
+
   "identifier": "com.pake.weekly",
+
   "version": "1.0.0",
+
   "app": {
+
     "withGlobalTauri": true,
-    "allowlist": {
-      "notification": {
-        "all": true
-      }
-    },
+
     "trayIcon": {
+
       "iconPath": "png/weekly_512.png",
+
       "iconAsTemplate": false,
+
       "id": "pake-tray"
+
     },
+
     "security": {
+
       "headers": {},
-      "csp": "default-src 'self'; img-src 'self' https: data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https:; notification-src 'self';"
+
+      "csp": null
+
     }
+
   },
+
   "build": {
+
     "frontendDist": "../dist"
+
   }
-}
+
+} this is tauri.config.json
