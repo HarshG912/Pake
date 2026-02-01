@@ -22,7 +22,11 @@ fn build_proxy_browser_arg(url: &Url) -> Option<String> {
     }
 }
 
-pub fn set_window(app: &mut App, config: &PakeConfig, tauri_config: &Config) -> WebviewWindow {
+pub fn set_window(
+    app: &mut App,
+    config: &PakeConfig,
+    tauri_config: &Config,
+) -> (WebviewWindow, PathBuf) {
     let package_name = tauri_config.clone().product_name.unwrap();
     let _data_dir = get_data_dir(app.handle(), package_name, config.multi_instance);
 
@@ -169,7 +173,7 @@ pub fn set_window(app: &mut App, config: &PakeConfig, tauri_config: &Config) -> 
     // Windows and Linux: set data_directory before proxy_url
     #[cfg(not(target_os = "macos"))]
     {
-        window_builder = window_builder.data_directory(_data_dir).theme(None);
+        window_builder = window_builder.data_directory(_data_dir.clone()).theme(None);
 
         if !config.proxy_url.is_empty() {
             if let Ok(proxy_url) = Url::from_str(&config.proxy_url) {
@@ -250,5 +254,8 @@ pub fn set_window(app: &mut App, config: &PakeConfig, tauri_config: &Config) -> 
         true
     });
 
-    window_builder.build().expect("Failed to build window")
+    window_builder
+        .build()
+        .map(|w| (w, _data_dir))
+        .expect("Failed to build window")
 }
