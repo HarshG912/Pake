@@ -96,12 +96,10 @@ pub fn run_app() {
             }
             // --- Menu Construction End ---
 
-            let window = set_window(app, &pake_config, &tauri_config);
+            let (window, data_dir) = set_window(app, &pake_config, &tauri_config);
 
             // Store the data directory path in app state for cleanup on close
             if multi_instance {
-                let package_name = tauri_config.product_name.clone().unwrap();
-                let data_dir = util::get_data_dir(app.handle(), package_name, true);
                 if let Ok(mut state_data_dir) = app.state::<AppState>().data_dir.lock() {
                     *state_data_dir = Some(data_dir);
                 }
