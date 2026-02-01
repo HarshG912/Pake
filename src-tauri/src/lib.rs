@@ -145,23 +145,60 @@ pub fn run_app() {
                     // Clear browsing data
                     if let Err(e) = webview_window.clear_all_browsing_data() {
                         eprintln!("Failed to clear browsing data: {}", e);
+                    } else {
+                        println!("Browsing data cleared successfully");
                     }
                 }
 
                 // Delete the data directory if in multi-instance mode
+                // Do this asynchronously with a delay to allow webview to release files
                 if multi_instance {
-                    if let Some(state) = app_handle.try_state::<AppState>() {
+                    // Get the data directory path before spawning async task
+                    let data_dir_opt = if let Some(state) = app_handle.try_state::<AppState>() {
                         if let Ok(data_dir_guard) = state.data_dir.lock() {
-                            if let Some(data_dir) = data_dir_guard.as_ref() {
-                                if data_dir.exists() {
-                                    if let Err(e) = std::fs::remove_dir_all(data_dir) {
-                                        eprintln!("Failed to delete data directory: {}", e);
-                                    } else {
-                                        println!("Cache directory cleaned up: {:?}", data_dir);
+                            data_dir_guard.clone()
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+
+                    if let Some(data_dir) = data_dir_opt {
+                        tauri::async_runtime::spawn(async move {
+                            // Wait a bit for webview to release files
+                            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+                            println!("Attempting to delete cache directory: {:?}", data_dir);
+                            if data_dir.exists() {
+                                // Try multiple times with increasing delays if directory is locked
+                                for attempt in 1..=3 {
+                                    match std::fs::remove_dir_all(&data_dir) {
+                                        Ok(_) => {
+                                            println!(
+                                                "Cache directory cleaned up successfully: {:?}",
+                                                data_dir
+                                            );
+                                            break;
+                                        }
+                                        Err(e) => {
+                                            eprintln!(
+                                                "Attempt {}/3: Failed to delete data directory: {}",
+                                                attempt, e
+                                            );
+                                            if attempt < 3 {
+                                                tokio::time::sleep(
+                                                    tokio::time::Duration::from_millis(300),
+                                                )
+                                                .await;
+                                            }
+                                        }
                                     }
                                 }
+                            } else {
+                                println!("Cache directory does not exist: {:?}", data_dir);
                             }
-                        }
+                        });
                     }
                 }
 
@@ -190,7 +227,12 @@ pub fn run_app() {
                     api.prevent_close();
                 } else {
                     // Exit app completely when hide_on_close is false
-                    std::process::exit(0);
+                    // Wait a bit before exiting to allow async cleanup to complete
+                    tauri::async_runtime::spawn(async move {
+                        tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                        std::process::exit(0);
+                    });
+                    api.prevent_close();
                 }
             }
         })
