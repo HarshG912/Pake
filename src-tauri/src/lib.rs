@@ -137,6 +137,34 @@ pub fn run_app() {
         })
         .on_window_event(move |_window, _event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = _event {
+                // Always clear cache and data directory when window close is requested
+                let app_handle = _window.app_handle().clone();
+
+                // Get the webview window to clear browsing data
+                if let Some(webview_window) = app_handle.get_webview_window("pake") {
+                    // Clear browsing data
+                    if let Err(e) = webview_window.clear_all_browsing_data() {
+                        eprintln!("Failed to clear browsing data: {}", e);
+                    }
+                }
+
+                // Delete the data directory if in multi-instance mode
+                if multi_instance {
+                    if let Some(state) = app_handle.try_state::<AppState>() {
+                        if let Ok(data_dir_guard) = state.data_dir.lock() {
+                            if let Some(data_dir) = data_dir_guard.as_ref() {
+                                if data_dir.exists() {
+                                    if let Err(e) = std::fs::remove_dir_all(data_dir) {
+                                        eprintln!("Failed to delete data directory: {}", e);
+                                    } else {
+                                        println!("Cache directory cleaned up: {:?}", data_dir);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 if hide_on_close {
                     // Hide window when hide_on_close is enabled (regardless of tray status)
                     let window = _window.clone();
@@ -161,35 +189,7 @@ pub fn run_app() {
                     });
                     api.prevent_close();
                 } else {
-                    // Clear cache and data directory when window actually closes
-                    let app_handle = _window.app_handle().clone();
-
-                    // Get the webview window to clear browsing data
-                    if let Some(webview_window) = app_handle.get_webview_window("pake") {
-                        // Clear browsing data
-                        if let Err(e) = webview_window.clear_all_browsing_data() {
-                            eprintln!("Failed to clear browsing data: {}", e);
-                        }
-                    }
-
-                    // Delete the data directory if in multi-instance mode
-                    if multi_instance {
-                        if let Some(state) = app_handle.try_state::<AppState>() {
-                            if let Ok(data_dir_guard) = state.data_dir.lock() {
-                                if let Some(data_dir) = data_dir_guard.as_ref() {
-                                    if data_dir.exists() {
-                                        if let Err(e) = std::fs::remove_dir_all(data_dir) {
-                                            eprintln!("Failed to delete data directory: {}", e);
-                                        } else {
-                                            println!("Cache directory cleaned up: {:?}", data_dir);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Exit app completely
+                    // Exit app completely when hide_on_close is false
                     std::process::exit(0);
                 }
             }
