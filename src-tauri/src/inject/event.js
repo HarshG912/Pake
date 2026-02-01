@@ -929,7 +929,7 @@ document.addEventListener("DOMContentLoaded", function () {
   class PakeNotification extends EventTarget {
     constructor(title, options = {}) {
       super();
-      
+
       this.title = title;
       this.body = options.body || "";
       this.icon = options.icon || "";
@@ -938,33 +938,33 @@ document.addEventListener("DOMContentLoaded", function () {
       this.requireInteraction = options.requireInteraction || false;
       this.silent = options.silent || false;
       this.timestamp = Date.now();
-      
+
       // Event handlers
       this.onclick = null;
       this.onclose = null;
       this.onerror = null;
       this.onshow = null;
-      
+
       // Internal state
       this._id = `pake-notification-${++notificationIdCounter}`;
       this._closed = false;
-      
+
       // Store instance for potential future event handling
       notificationInstances.set(this._id, this);
-      
+
       // Send notification to native system
       this._show();
     }
-    
+
     _show() {
       const { invoke } = window.__TAURI__.core;
       let icon = this.icon;
-      
+
       // If the icon is a relative path, convert to full path
       if (icon && icon.startsWith("/")) {
         icon = window.location.origin + icon;
       }
-      
+
       // Send to Tauri backend
       invoke("send_notification", {
         params: {
@@ -982,7 +982,7 @@ document.addEventListener("DOMContentLoaded", function () {
           this._triggerEvent("error", error);
         });
     }
-    
+
     _triggerEvent(eventName, data = null) {
       // Create and dispatch event
       const event = new Event(eventName);
@@ -990,14 +990,14 @@ document.addEventListener("DOMContentLoaded", function () {
         event.data = data;
       }
       this.dispatchEvent(event);
-      
+
       // Also call the onXXX handler if defined
       const handlerName = `on${eventName}`;
       if (typeof this[handlerName] === "function") {
         this[handlerName].call(this, event);
       }
     }
-    
+
     close() {
       if (!this._closed) {
         this._closed = true;
@@ -1005,29 +1005,29 @@ document.addEventListener("DOMContentLoaded", function () {
         notificationInstances.delete(this._id);
       }
     }
-    
+
     // Static method to request permission
     static requestPermission(callback) {
       const permissionPromise = Promise.resolve("granted");
-      
+
       if (callback) {
         permissionPromise.then(callback);
       }
-      
+
       return permissionPromise;
     }
-    
+
     // Static getter for permission
     static get permission() {
       return "granted";
     }
-    
+
     // Getter for permission on instances (for compatibility)
     static get maxActions() {
       return 0; // Tauri doesn't support actions yet
     }
   }
-  
+
   // Set the permission property
   let permVal = "granted";
   Object.defineProperty(PakeNotification, "permission", {
@@ -1037,7 +1037,7 @@ document.addEventListener("DOMContentLoaded", function () {
       permVal = v;
     },
   });
-  
+
   // Replace the native Notification with our implementation
   window.Notification = PakeNotification;
 });
