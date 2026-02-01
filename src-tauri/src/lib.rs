@@ -97,7 +97,7 @@ pub fn run_app() {
             // --- Menu Construction End ---
 
             let window = set_window(app, &pake_config, &tauri_config);
-            
+
             // Store the data directory path in app state for cleanup on close
             if multi_instance {
                 let package_name = tauri_config.product_name.clone().unwrap();
@@ -106,7 +106,7 @@ pub fn run_app() {
                     *state_data_dir = Some(data_dir);
                 }
             }
-            
+
             set_system_tray(
                 app.app_handle(),
                 show_system_tray,
@@ -165,7 +165,7 @@ pub fn run_app() {
                 } else {
                     // Clear cache and data directory when window actually closes
                     let app_handle = _window.app_handle().clone();
-                    
+
                     // Get the webview window to clear browsing data
                     if let Some(webview_window) = app_handle.get_webview_window("pake") {
                         // Clear browsing data
@@ -173,7 +173,7 @@ pub fn run_app() {
                             eprintln!("Failed to clear browsing data: {}", e);
                         }
                     }
-                    
+
                     // Delete the data directory if in multi-instance mode
                     if multi_instance {
                         if let Some(state) = app_handle.try_state::<AppState>() {
@@ -190,7 +190,7 @@ pub fn run_app() {
                             }
                         }
                     }
-                    
+
                     // Exit app completely
                     std::process::exit(0);
                 }
