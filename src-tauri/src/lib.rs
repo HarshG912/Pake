@@ -2,6 +2,7 @@
 mod app;
 mod util;
 
+use std::sync::{Arc, Mutex};
 use tauri::Manager;
 use tauri_plugin_window_state::Builder as WindowStatePlugin;
 use tauri_plugin_window_state::StateFlags;
@@ -20,6 +21,12 @@ use app::{
     window::set_window,
 };
 use util::get_pake_config;
+
+// State to store the data directory path for cleanup on close
+#[derive(Clone)]
+struct AppState {
+    data_dir: Arc<Mutex<Option<std::path::PathBuf>>>,
+}
 
 pub fn run_app() {
     let (pake_config, tauri_config) = get_pake_config();
@@ -41,8 +48,14 @@ pub fn run_app() {
         })
         .build();
 
+    // Initialize app state
+    let app_state = AppState {
+        data_dir: Arc::new(Mutex::new(None)),
+    };
+    
     #[allow(deprecated)]
     let mut app_builder = tauri_app
+        .manage(app_state.clone())
         .plugin(window_state_plugin)
         .plugin(tauri_plugin_oauth::init())
         .plugin(tauri_plugin_http::init())
@@ -84,6 +97,16 @@ pub fn run_app() {
             // --- Menu Construction End ---
 
             let window = set_window(app, &pake_config, &tauri_config);
+            
+            // Store the data directory path in app state for cleanup on close
+            if multi_instance {
+                let package_name = tauri_config.product_name.clone().unwrap();
+                let data_dir = util::get_data_dir(app.handle(), package_name, true);
+                if let Ok(mut state_data_dir) = app.state::<AppState>().data_dir.lock() {
+                    *state_data_dir = Some(data_dir);
+                }
+            }
+            
             set_system_tray(
                 app.app_handle(),
                 show_system_tray,
@@ -140,7 +163,33 @@ pub fn run_app() {
                     });
                     api.prevent_close();
                 } else {
-                    // Exit app completely when hide_on_close is false
+                    // Clear cache and data directory when window actually closes
+                    let window = _window.clone();
+                    let app_handle = _window.app_handle().clone();
+                    
+                    // Clear browsing data
+                    if let Err(e) = window.clear_all_browsing_data() {
+                        eprintln!("Failed to clear browsing data: {}", e);
+                    }
+                    
+                    // Delete the data directory if in multi-instance mode
+                    if multi_instance {
+                        if let Ok(state) = app_handle.try_state::<AppState>() {
+                            if let Ok(data_dir_guard) = state.data_dir.lock() {
+                                if let Some(ref data_dir) = *data_dir_guard {
+                                    if data_dir.exists() {
+                                        if let Err(e) = std::fs::remove_dir_all(data_dir) {
+                                            eprintln!("Failed to delete data directory: {}", e);
+                                        } else {
+                                            println!("Cache directory cleaned up: {:?}", data_dir);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Exit app completely
                     std::process::exit(0);
                 }
             }
