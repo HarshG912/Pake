@@ -4,6 +4,11 @@
   "version": "1.0.0",
   "app": {
     "withGlobalTauri": true,
+    "allowlist": {
+      "notification": {
+        "all": true
+      }
+    },
     "trayIcon": {
       "iconPath": "png/weekly_512.png",
       "iconAsTemplate": false,
@@ -11,7 +16,7 @@
     },
     "security": {
       "headers": {},
-      "csp": null
+      "csp": "default-src 'self'; img-src 'self' https: data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https:; notification-src 'self';"
     }
   },
   "build": {
